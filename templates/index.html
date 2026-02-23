@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nabarangpur Tender Extractor</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Nabarangpur District Tender Extractor</h1>
+      <p>
+        Pulls the latest active tenders from
+        <a href="https://tendersodisha.gov.in/nicgep/app" target="_blank" rel="noreferrer">tendersodisha.gov.in</a>
+        and filters records relevant to Nabarangpur district.
+      </p>
+
+      <form id="search-form">
+        <label for="district">District</label>
+        <input id="district" name="district" value="Nabarangpur" />
+        <button type="submit">Extract Data</button>
+      </form>
+
+      <p id="status">Click "Extract Data" to load tenders.</p>
+
+      <div class="table-wrap">
+        <table id="result-table" hidden>
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Reference No.</th>
+              <th>Closing Date</th>
+              <th>Department</th>
+              <th>Location</th>
+              <th>Link</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </main>
+
+    <script>
+      const form = document.getElementById('search-form');
+      const statusNode = document.getElementById('status');
+      const table = document.getElementById('result-table');
+      const tbody = table.querySelector('tbody');
+
+      async function loadTenders(district) {
+        statusNode.textContent = `Loading tenders for ${district}...`;
+        table.hidden = true;
+        tbody.innerHTML = '';
+
+        const response = await fetch(`/api/tenders?district=${encodeURIComponent(district)}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          statusNode.textContent = data.error || 'Unable to load tenders.';
+          return;
+        }
+
+        if (!data.tenders.length) {
+          statusNode.textContent = `No tenders found for ${district}.`;
+          return;
+        }
+
+        for (const tender of data.tenders) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${tender.title}</td>
+            <td>${tender.reference_no}</td>
+            <td>${tender.closing_date}</td>
+            <td>${tender.department}</td>
+            <td>${tender.location}</td>
+            <td>${tender.link ? `<a href="${tender.link}" target="_blank" rel="noreferrer">Open</a>` : '-'}</td>
+          `;
+          tbody.appendChild(tr);
+        }
+
+        statusNode.textContent = `Found ${data.count} tender(s) for ${district}.`;
+        table.hidden = false;
+      }
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const district = document.getElementById('district').value.trim() || 'Nabarangpur';
+        loadTenders(district).catch((error) => {
+          statusNode.textContent = `Error: ${error.message}`;
+        });
+      });
+    </script>
+  </body>
+</html>
